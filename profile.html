@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Profile</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h2>Your Profile</h2>
+    <div id="profileInfo"></div>
+    <button onclick="window.location.href='editprofile.html'">Edit Profile</button>
+
+    <script>
+        const API_KEY = "$2a$10$K.j8n1WjJwWPfPkyVDX8xeTAPZsp2AsjyTzSS8LgcK446s6Wtx4Zi";  // Replace with your JSONBin API Key
+        const USER_BIN_ID = "67e3a8478960c979a578aa41"; // Replace with your JSONBin Bin ID
+
+        async function loadProfile() {
+            let user = localStorage.getItem("loggedInUser");
+            if (!user) {
+                alert("Please login first.");
+                window.location.href = "login.html";
+                return;
+            }
+
+            try {
+                let response = await fetch(`https://api.jsonbin.io/v3/b/${USER_BIN_ID}/latest`, {
+                    headers: { "X-Master-Key": API_KEY }
+                });
+
+                if (!response.ok) {
+                    throw new Error("Failed to fetch profile data.");
+                }
+
+                let data = await response.json();
+                let users = data.record.users;
+                let userData = users.find(u => u.username === user);
+
+                if (!userData) {
+                    alert("Profile not found.");
+                    return;
+                }
+
+                document.getElementById("profileInfo").innerHTML = `
+                    <p><strong>Nickname:</strong> ${userData.nickname}</p>
+                    <p><strong>Account Created:</strong> ${userData.creationDate}</p>
+                    <p><strong>Interests:</strong> ${userData.interests.join(", ")}</p>
+                    <p><strong>Relationship Status:</strong> ${userData.relationship}</p>
+                    <p><strong>Gender:</strong> ${userData.gender}</p>
+                    <p><strong>Country:</strong> ${userData.country}</p>
+                    <p><strong>Nationality:</strong> ${userData.nationality}</p>
+                    <p><strong>Language:</strong> ${userData.language}</p>
+                    <p><strong>Bio:</strong> ${userData.bio}</p>
+                    <p><strong>Last Online:</strong> ${userData.lastOnline}</p>
+                `;
+            } catch (error) {
+                console.error("Error loading profile:", error);
+                alert("Error loading profile. Please try again later.");
+            }
+        }
+
+        loadProfile();
+    </script>
+</body>
+</html>
