@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friendora - Feed</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="feed.html">Feed</a>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+        <span id="userNav"></span>
+    </nav>
+
+    <h2>Post Your Feed</h2>
+    <div id="postForm">
+        <input type="text" id="feedTitle" placeholder="Enter Feed Title" required>
+        <textarea id="feedDescription" placeholder="Enter Feed Description" required></textarea>
+        <input type="file" id="feedImage" accept="image/*">
+        <button onclick="postFeed()">Post Feed</button>
+    </div>
+
+    <h2>Live Feeds</h2>
+    <div id="feedContainer"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js"></script>
+    <script>
+        // ✅ Step 1: Add Your Firebase Config Here  
+        const firebaseConfig = {
+            apiKey: "YOUR_FIREBASE_API_KEY",
+            authDomain: "YOUR_FIREBASE_PROJECT.firebaseapp.com",
+            projectId: "YOUR_FIREBASE_PROJECT_ID",
+            storageBucket: "YOUR_FIREBASE_BUCKET.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const storage = firebase.storage();
+
+        let loggedInUser = localStorage.getItem("loggedInUser");
+        let userNav = document.getElementById("userNav");
+
+        if (!loggedInUser) {
+            alert("You must register first!");
+            window.location.href = "signup.html";
+        } else {
+            let userData = JSON.parse(loggedInUser);
+            userNav.innerHTML = `<a href="#">${userData.nickname}</a>`;
+        }
+
+        // ✅ Step 2: Function to Post Feed  
+        async function postFeed() {
+            let title = document.getElementById("feedTitle").value.trim();
+            let description = document.getElementById("feedDescription").value.trim();
+            let imageFile = document.getElementById("feedImage").files[0];
+
+            if (!title || !description) {
+                alert("Title and Description are required!");
+                return;
+            }
+
+            let imageUrl = "";
+            if (imageFile) {
+                let imageRef = storage.ref().child(`feedImages/${Date.now()}_${imageFile.name}`);
+                let snapshot = await imageRef.put(imageFile);
+                imageUrl = await snapshot.ref.getDownloadURL();
+            }
+
+            await db.collection("feeds").add({
+                username: JSON.parse(loggedInUser).username,
+                nickname: JSON.parse(loggedInUser).nickname,
+                title,
+                description,
+                imageUrl,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            alert("Feed posted successfully!");
+            loadFeeds();
+        }
+
+        // ✅ Step 3: Function to Load Feeds  
+        function loadFeeds() {
+            let feedContainer = document.getElementById("feedContainer");
+            feedContainer.innerHTML = "";
+
+            db.collection("feeds").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+                feedContainer.innerHTML = "";
+                snapshot.forEach(doc => {
+                    let feed = doc.data();
+                    let feedElement = `
+                        <div class="feed">
+                            <h3>${feed.title} by ${feed.nickname}</h3>
+                            <p>${feed.description}</p>
+                            ${feed.imageUrl ? `<img src="${feed.imageUrl}" style="width: 300px;">` : ""}
+                            <button onclick="likeFeed('${doc.id}')">👍 Like</button>
+                            <button onclick="commentOnFeed('${doc.id}')">💬 Comment</button>
+                            <div id="comments_${doc.id}"></div>
+                        </div>
+                        <hr>
+                    `;
+                    feedContainer.innerHTML += feedElement;
+                });
+            });
+        }
+
+        // ✅ Step 4: Function to Like Feed  
+        async function likeFeed(feedId) {
+            let user = JSON.parse(localStorage.getItem("loggedInUser")).username;
+            let feedRef = db.collection("feeds").doc(feedId);
+            let feedDoc = await feedRef.get();
+
+            if (!feedDoc.exists) return;
+            let feedData = feedDoc.data();
+            let likes = feedData.likes || [];
+
+            if (!likes.includes(user)) {
+                likes.push(user);
+            } else {
+                likes = likes.filter(like => like !== user);
+            }
+
+            await feedRef.update({ likes });
+        }
+
+        // ✅ Step 5: Function to Comment on Feed  
+        async function commentOnFeed(feedId) {
+            let comment = prompt("Enter your comment:");
+            if (!comment) return;
+
+            let user = JSON.parse(localStorage.getItem("loggedInUser")).nickname;
+            let commentsRef = db.collection("feeds").doc(feedId).collection("comments");
+
+            await commentsRef.add({
+                user,
+                comment,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            loadComments(feedId);
+        }
+
+        // ✅ Step 6: Function to Load Comments  
+        function loadComments(feedId) {
+            let commentsContainer = document.getElementById(`comments_${feedId}`);
+            commentsContainer.innerHTML = "";
+
+            db.collection("feeds").doc(feedId).collection("comments")
+                .orderBy("timestamp", "asc")
+                .onSnapshot(snapshot => {
+                    commentsContainer.innerHTML = "";
+                    snapshot.forEach(doc => {
+                        let comment = doc.data();
+                        commentsContainer.innerHTML += `<p><strong>${comment.user}:</strong> ${comment.comment}</p>`;
+                    });
+                });
+        }
+
+        loadFeeds();
+    </script>
+</body>
+</html>
