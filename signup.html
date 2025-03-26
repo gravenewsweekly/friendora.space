@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signup - Friendora</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h2>Signup for Friendora</h2>
+    
+    <form onsubmit="signup(event)">
+        <input type="text" id="username" placeholder="Username" required>
+        <input type="email" id="email" placeholder="Email (.com only)" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button type="submit">Sign Up</button>
+    </form>
+
+    <p>Already have an account? <a href="login.html">Login here</a></p>
+
+    <script>
+        const API_KEY = "$2a$10$K.j8n1WjJwWPfPkyVDX8xeTAPZsp2AsjyTzSS8LgcK446s6Wtx4Zi";
+        const BIN_ID = "67e3a8478960c979a578aa41";
+
+        async function signup(event) {
+            event.preventDefault();
+
+            let username = document.getElementById("username").value.trim();
+            let email = document.getElementById("email").value.trim();
+            let password = document.getElementById("password").value.trim();
+
+            if (!/^[a-zA-Z0-9_]+$/.test(username) || username.length < 3) {
+                alert("Invalid username: Use letters, numbers, and underscore only (min 3 chars).");
+                return;
+            }
+
+            if (!email.endsWith(".com")) {
+                alert("Email must end with .com");
+                return;
+            }
+
+            const restrictedNames = ["admin", "gov", "modi", "elonmusk"];
+            if (restrictedNames.includes(username.toLowerCase())) {
+                alert("You cannot use official names.");
+                return;
+            }
+
+            let response = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                headers: { "X-Master-Key": API_KEY }
+            });
+            let data = await response.json();
+            let users = data.record.users;
+
+            if (users.some(user => user.email === email)) {
+                alert("Email is already registered.");
+                return;
+            }
+
+            if (users.some(user => user.username === username)) {
+                alert("Username is taken.");
+                return;
+            }
+
+            users.push({ username, email, password });
+            await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Master-Key": API_KEY
+                },
+                body: JSON.stringify({ users })
+            });
+
+            localStorage.setItem("loggedInUser", username);
+            window.location.href = "index.html";
+        }
+    </script>
+</body>
+</html>
