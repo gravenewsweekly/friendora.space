@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friendora - Home</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="feed.html">Feed</a>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+        <span id="userNav"></span>
+    </nav>
+
+    <h1>Welcome to Friendora</h1>
+    <p>
+        Friendora is a <strong>real-time social platform</strong> where users can connect, share thoughts, 
+        and interact. Create an account, post updates, react to others' posts, and grow your network!
+    </p>
+
+    <h3>Why Join Friendora?</h3>
+    <ul>
+        <li>🔹 <strong>Create a Profile</strong> - Set up your personal bio & profile picture.</li>
+        <li>📢 <strong>Live Feed</strong> - Share updates with your followers in real time.</li>
+        <li>👍 <strong>Reactions & Comments</strong> - Engage with posts instantly.</li>
+        <li>🔐 <strong>Privacy Control</strong> - Manage your personal information securely.</li>
+    </ul>
+
+    <div id="accountOptions" style="display: none; position: absolute; background: #f0f0f0; padding: 10px; border-radius: 5px;">
+        <button onclick="editProfile()">Edit Profile</button>
+        <button onclick="viewProfile()">View Profile</button>
+        <button onclick="window.location.href='feed.html'">Feed</button>
+        <button onclick="logout()">Log Out</button>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 Friendora. All rights reserved.</p>
+    </footer>
+
+    <script>
+        const API_KEY = "$2a$10$K.j8n1WjJwWPfPkyVDX8xeTAPZsp2AsjyTzSS8LgcK446s6Wtx4Zi";  // Replace with your JSONBin API Key
+        const USER_BIN_ID = "67e3a8478960c979a578aa41"; // Replace with your JSONBin Bin ID
+
+        let loggedInUser = localStorage.getItem("loggedInUser");
+        let userNav = document.getElementById("userNav");
+        let accountOptions = document.getElementById("accountOptions");
+
+        async function loadUserProfile() {
+            if (!loggedInUser) {
+                userNav.innerHTML = `<a href="signup.html">Sign Up</a> | <a href="login.html">Login</a>`;
+                return;
+            }
+
+            try {
+                let response = await fetch(`https://api.jsonbin.io/v3/b/${USER_BIN_ID}/latest`, {
+                    headers: { "X-Master-Key": API_KEY }
+                });
+
+                if (!response.ok) {
+                    throw new Error("Failed to fetch user data.");
+                }
+
+                let data = await response.json();
+                let users = data.record.users;
+                let userData = users.find(u => u.username === loggedInUser);
+
+                if (!userData) {
+                    userNav.innerHTML = `<a href="signup.html">Sign Up</a> | <a href="login.html">Login</a>`;
+                    return;
+                }
+
+                userNav.innerHTML = `<a href="#" onclick="toggleOptions()">${userData.nickname}</a>`;
+
+            } catch (error) {
+                console.error("Error fetching user profile:", error);
+                userNav.innerHTML = `<a href="signup.html">Sign Up</a> | <a href="login.html">Login</a>`;
+            }
+        }
+
+        function toggleOptions() {
+            accountOptions.style.display = accountOptions.style.display === "block" ? "none" : "block";
+        }
+
+        function editProfile() {
+            window.location.href = "editprofile.html";
+        }
+
+        function viewProfile() {
+            window.location.href = "profile.html";
+        }
+
+        function logout() {
+            localStorage.removeItem("loggedInUser");
+            window.location.href = "login.html";
+        }
+
+        loadUserProfile();
+    </script>
+</body>
+</html>
